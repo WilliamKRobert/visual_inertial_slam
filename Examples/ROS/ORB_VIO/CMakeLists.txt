@@ -67,4 +67,15 @@ target_link_libraries(VIO
 ${LIBS}
 )
 
+# Node for stereo camera
+rosbuild_add_executable(VISTEREO
+src/ros_vi_stereo.cc
+src/MsgSync/MsgSynchronizer.cpp
+src/MsgSync/MsgSynchronizer.h
+)
+
+target_link_libraries(VISTEREO
+${LIBS}
+)
+
 
