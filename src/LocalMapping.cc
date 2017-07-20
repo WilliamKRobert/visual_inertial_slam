@@ -23,6 +23,7 @@
 #include "ORBmatcher.h"
 #include "Optimizer.h"
 
+#include <iomanip>
 #include<mutex>
 #include "Converter.h"
 
