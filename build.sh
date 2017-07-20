@@ -40,6 +40,13 @@ cmake .. -DROS_BUILD_TYPE=Release
 make -j
 cd ../../../../
 
+cd Examples/ROS/ORB_STEREO_VIO
+mkdir build
+cd build
+cmake .. -DROS_BUILD_TYPE=Release
+make -j
+cd ../../../../
+
 echo ""
 echo "Launch file in Examples/ROS/ORB_VIO/launch."
 echo "Modify the configuration file config/euroc.yaml"
