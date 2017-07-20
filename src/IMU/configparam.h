@@ -27,7 +27,8 @@ public:
     static double GetG(){return _g;}
 
     std::string _bagfile;
-    std::string _imageTopic;
+    std::string _leftImageTopic;
+    std::string _rightImageTopic;
     std::string _imuTopic;
 
     static std::string getTmpFilePath();

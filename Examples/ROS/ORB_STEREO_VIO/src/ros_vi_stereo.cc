@@ -19,17 +19,17 @@
 */
 
 
-#include<iostream>
-#include<algorithm>
-#include<fstream>
-#include<chrono>
+#include <iostream>
+#include <algorithm>
+#include <fstream>
+#include <chrono>
 
-#include<ros/ros.h>
+#include <ros/ros.h>
 #include <cv_bridge/cv_bridge.h>
 
-#include<opencv2/core/core.hpp>
+#include <opencv2/core/core.hpp>
 
-#include"../../../include/System.h"
+#include "../../../include/System.h"
 
 #include "MsgSync/MsgSynchronizer.h"
 
@@ -47,25 +47,27 @@ class ImageGrabber
 public:
     ImageGrabber(ORB_SLAM2::System* pSLAM):mpSLAM(pSLAM){}
 
-    void GrabImage(const sensor_msgs::ImageConstPtr& msg);
+    void GrabStereo(const sensor_msgs::ImageConstPtr& msgLeft, const sensor_msgs::ImageConstPtr& msgRight);
 
     ORB_SLAM2::System* mpSLAM;
+    bool do_rectify;
+    cv::Mat M1l, M2l, M1r, M2r;
 };
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "Mono");
+    ros::init(argc, argv, "Stereo Visual Inertial");
     ros::start();
 
     if(argc != 3)
     {
-        cerr << endl << "Usage: rosrun ORB_SLAM2 Mono path_to_vocabulary path_to_settings" << endl;
+        cerr << endl << "Usage: rosrun ORB_SLAM2 Stereo path_to_vocabulary path_to_settings" << endl;
         ros::shutdown();
         return 1;
     }
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::MONOCULAR,true);
+    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true);
 
     ORB_SLAM2::ConfigParam config(argv[2]);
 
@@ -75,14 +77,17 @@ int main(int argc, char **argv)
     double imageMsgDelaySec = config.GetImageDelayToIMU();
     ORBVIO::MsgSynchronizer msgsync(imageMsgDelaySec);
     ros::NodeHandle nh;
-    ros::Subscriber imagesub;
+    ros::Subscriber leftimagesub;
+    ros::Subscriber rightimagesub;
     ros::Subscriber imusub;
     if(ORB_SLAM2::ConfigParam::GetRealTimeFlag())
     {
-        imagesub = nh.subscribe(config._imageTopic, /*200*/ 2, &ORBVIO::MsgSynchronizer::imageCallback, &msgsync);
+        leftimagesub = nh.subscribe(config._leftImageTopic, /*200*/ 2, &ORBVIO::MsgSynchronizer::imageCallback, &msgsync);
+        rightimagesub = nh.subscribe(config._rightImageTopic, /*200*/ 2, &ORBVIO::MsgSynchronizer::imageCallback, &msgsync);
         imusub = nh.subscribe(config._imuTopic, 200, &ORBVIO::MsgSynchronizer::imuCallback, &msgsync);
     }
-    sensor_msgs::ImageConstPtr imageMsg;
+    sensor_msgs::ImageConstPtr leftImageMsg;
+    sensor_msgs::ImageConstPtr rightImageMsg;
     std::vector<sensor_msgs::ImuConstPtr> vimuMsg;
 
     // 3dm imu output per g. 1g=9.80665 according to datasheet
@@ -101,8 +106,10 @@ int main(int argc, char **argv)
 
     std::vector<std::string> topics;
     std::string imutopic = config._imuTopic;
-    std::string imagetopic = config._imageTopic;
-    topics.push_back(imagetopic);
+    std::string leftimagetopic = config._leftImageTopic;
+    std::string rightImagetopic = config._rightImageTopic;
+    topics.push_back(leftimagetopic);
+    topics.push_back(rightimagetopic);
     topics.push_back(imutopic);
 
     rosbag::View view(bag, rosbag::TopicQuery(topics));
@@ -115,7 +122,7 @@ int main(int argc, char **argv)
         sensor_msgs::ImageConstPtr simage = m.instantiate<sensor_msgs::Image>();
         if(simage!=NULL)
             msgsync.imageCallback(simage);
-        bool bdata = msgsync.getRecentMsgs(imageMsg,vimuMsg);
+        bool bdata = msgsync.getRecentMsgs(leftImageMsg, rightImageMsg, vimuMsg);
 
         if(bdata)
         {
@@ -283,21 +290,6 @@ int main(int argc, char **argv)
     return 0;
 }
 
-//void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr& msg)
-//{
-//    // Copy the ros image message to cv::Mat.
-//    cv_bridge::CvImageConstPtr cv_ptr;
-//    try
-//    {
-//        cv_ptr = cv_bridge::toCvShare(msg);
-//    }
-//    catch (cv_bridge::Exception& e)
-//    {
-//        ROS_ERROR("cv_bridge exception: %s", e.what());
-//        return;
-//    }
 
-//    mpSLAM->TrackMonocular(cv_ptr->image,cv_ptr->header.stamp.toSec());
-//}
 
 
