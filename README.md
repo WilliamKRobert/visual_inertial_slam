@@ -1,3 +1,7 @@
+Visual-Inertial Localization and mapping.
+
+Implementation is modified on top of ORB-SLAM2 and LearnVIORB.
+*****
 Realtime branch. 
 
 Modification: 
