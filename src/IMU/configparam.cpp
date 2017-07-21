@@ -35,8 +35,8 @@ ConfigParam::ConfigParam(std::string configfile)
     fSettings["leftimagetopic"] >> _leftImageTopic;
     fSettings["rightimagetopic"] >> _rightImageTopic;
     std::cout<<"imu topic: "<<_imuTopic<<std::endl;
-    std::cout<<"image topic: "<<_leftImageTopic<<std::endl;
-    std::cout<<"image topic: "<<_rightImageTopic<<std::endl;
+    std::cout<<"left image topic: "<<_leftImageTopic<<std::endl;
+    std::cout<<"right image topic: "<<_rightImageTopic<<std::endl;
 
     _LocalWindowSize = fSettings["LocalMapping.LocalWindowSize"];
     std::cout<<"local window size: "<<_LocalWindowSize<<std::endl;

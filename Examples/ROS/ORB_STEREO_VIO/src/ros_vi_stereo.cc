@@ -45,7 +45,19 @@ using namespace std;
 class SensorGrabber
 {
 public:
-    SensorGrabber(ORB_SLAM2::System* pSLAM):mpSLAM(pSLAM), bFirstRun(true){}
+    SensorGrabber(ORB_SLAM2::System* pSLAM, 
+                  const double imageMsgDelaySec, 
+                  const double testDiscardTime,
+                  const double g3dm,
+                  bool bAccMultiply98,
+                  bool do_rectify=true)
+    :mpSLAM(pSLAM),     
+    _imageMsgDelaySec(imageMsgDelaySec),
+    _testDiscardTime(testDiscardTime),
+    _g3dm(g3dm),
+    _bAccMultiply98(bAccMultiply98), 
+    _do_rectify(do_rectify),
+    bFirstRun(true){}
 
     void GrabImuStereo(const std::vector<sensor_msgs::ImuConstPtr> msgImu, 
                        const sensor_msgs::ImageConstPtr& msgLeft, 
@@ -53,9 +65,12 @@ public:
 
     ORB_SLAM2::System* mpSLAM;
 
-    bool do_rectify;
-    bool bAccMultiply98;
-    double g3dm = 9.80665;
+    double _imageMsgDelaySec;
+    double _testDiscardTime;
+    const double _g3dm;
+
+    bool _bAccMultiply98;
+    bool _do_rectify;
     
     bool bFirstRun;
     double initTime;
@@ -104,10 +119,11 @@ int main(int argc, char **argv)
     const bool bAccMultiply98 = config.GetAccMultiply9p8();
 
     ros::Rate r(1000);
-
+    bool do_rectify = true;
+    SensorGrabber igb(&SLAM, imageMsgDelaySec, config._testDiscardTime, g3dm, bAccMultiply98, do_rectify);
     if(!ORB_SLAM2::ConfigParam::GetRealTimeFlag())
-    {
-        ROS_WARN("Run not-realtime");
+    {    
+        ROS_WARN("Get sensor data from ros bag file");
 
         std::string bagfile = config._bagfile;
         rosbag::Bag bag;
@@ -123,7 +139,7 @@ int main(int argc, char **argv)
 
         rosbag::View view(bag, rosbag::TopicQuery(topics));
 
-        SensorGrabber igb(&SLAM);
+
         BOOST_FOREACH(rosbag::MessageInstance const m, view)
         {
             sensor_msgs::ImuConstPtr simu = m.instantiate<sensor_msgs::Imu>();
@@ -144,7 +160,7 @@ int main(int argc, char **argv)
                 {
                     if(!ros::ok())
                     {
-                        bstop=true;
+                        bstop=true; 
                     }
                 };
                 if(bstop)
@@ -161,47 +177,47 @@ int main(int argc, char **argv)
         }
 
     }
-    else
-    {
-        ROS_WARN("Run realtime");
-        while(ros::ok())
-        {
-            bool bdata = msgsync.getRecentMsgs(leftImageMsg,rightImageMsg, vimuMsg);
+//     else
+//     {
+//         ROS_WARN("Run realtime");
+//         while(ros::ok())
+//         {
+//             bool bdata = msgsync.getRecentMsgs(leftImageMsg,rightImageMsg, vimuMsg);
 
-            if(bdata)
-            {
+//             if(bdata)
+//             {
                 
-                igb.GrabImuStereo(vimuMsg, leftImageMsg, rightImageMsg);
-            }
+//                 igb.GrabImuStereo(vimuMsg, leftImageMsg, rightImageMsg);
+//             }
 
-            //cv::waitKey(1);
+//             //cv::waitKey(1);
 
-            ros::spinOnce();
-            r.sleep();
-            if(!ros::ok())
-                break;
-        }
-    }
+//             ros::spinOnce();
+//             r.sleep();
+//             if(!ros::ok())
+//                 break;
+//         }
+//     }
 
-//    ImageGrabber igb(&SLAM);
+// //    ImageGrabber igb(&SLAM);
 
-//    ros::NodeHandle nodeHandler;
-//    ros::Subscriber sub = nodeHandler.subscribe("/camera/image_raw", 1, &ImageGrabber::GrabImage,&igb);
+// //    ros::NodeHandle nodeHandler;
+// //    ros::Subscriber sub = nodeHandler.subscribe("/camera/image_raw", 1, &ImageGrabber::GrabImage,&igb);
 
-//    ros::spin();
+// //    ros::spin();
 
 
-    // Save camera trajectory
-    //SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
-    SLAM.SaveKeyFrameTrajectoryNavState(config._tmpFilePath+"KeyFrameNavStateTrajectory.txt");
+//     // Save camera trajectory
+//     //SLAM.SaveKeyFrameTrajectoryTUM("KeyFrameTrajectory.txt");
+//     SLAM.SaveKeyFrameTrajectoryNavState(config._tmpFilePath+"KeyFrameNavStateTrajectory.txt");
 
-    cout<<endl<<endl<<"press any key to shutdown"<<endl;
-    getchar();
+//     cout<<endl<<endl<<"press any key to shutdown"<<endl;
+//     getchar();
 
-    // Stop all threads
-    SLAM.Shutdown();
+//     // Stop all threads
+//     SLAM.Shutdown();
 
-    ros::shutdown();
+//     ros::shutdown();
 
     return 0;
 }
@@ -217,11 +233,11 @@ void SensorGrabber::GrabImuStereo(const std::vector<sensor_msgs::ImuConstPtr> ms
         double ax = imuMsg->linear_acceleration.x;
         double ay = imuMsg->linear_acceleration.y;
         double az = imuMsg->linear_acceleration.z;
-        if(bAccMultiply98)
+        if(_bAccMultiply98)
         {
-            ax *= g3dm;
-            ay *= g3dm;
-            az *= g3dm;
+            ax *= _g3dm;
+            ay *= _g3dm;
+            az *= _g3dm;
         }
         ORB_SLAM2::IMUData imudata(imuMsg->angular_velocity.x,
                                    imuMsg->angular_velocity.y,
@@ -262,7 +278,7 @@ void SensorGrabber::GrabImuStereo(const std::vector<sensor_msgs::ImuConstPtr> ms
     }
 
     cv::Mat imLeft, imRight;
-    if(do_rectify)
+    if(_do_rectify)
     {
         cv::remap(cv_ptrLeft->image, imLeft, M1l, M2l, cv::INTER_LINEAR);
         cv::remap(cv_ptrRight->image, imRight, M1r, M2r, cv::INTER_LINEAR);
@@ -275,7 +291,7 @@ void SensorGrabber::GrabImuStereo(const std::vector<sensor_msgs::ImuConstPtr> ms
 
     }
 
-    if (msgLeft->header.stamp.toSec() < initTime + config._testDiscardTime){
+    if (msgLeft->header.stamp.toSec() < initTime + _testDiscardTime){
             imLeft = cv::Mat::zeros(imLeft.rows, imLeft.cols, imLeft.type());
             imRight = cv::Mat::zeros(imRight.rows, imRight.cols, imRight.type());
     }
@@ -283,7 +299,7 @@ void SensorGrabber::GrabImuStereo(const std::vector<sensor_msgs::ImuConstPtr> ms
     mpSLAM->TrackStereoVI(vimuData,
                           imLeft,
                           imRight,
-                          cv_ptrLeft->header.stamp.toSec() - imageMsgDelaySec);
+                          cv_ptrLeft->header.stamp.toSec() - _imageMsgDelaySec);
 
 }
 

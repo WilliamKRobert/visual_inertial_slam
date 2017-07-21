@@ -149,7 +149,7 @@ cv::Mat System::TrackMonoVI(const cv::Mat &im, const std::vector<IMUData> &vimu,
 
 // -----------------------------------------------------------------------------------------------------
 // MYLIN
-cv::Mat System::TrackStereoVI(const cv::Mat &imLeft, const cv::Mat &imRight, const std::vector<IMUData> &vimu, const double &timestamp)
+cv::Mat System::TrackStereoVI(const std::vector<IMUData> &vimu, const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp)
 {
     if(mSensor!=STEREO)
     {
@@ -191,7 +191,7 @@ cv::Mat System::TrackStereoVI(const cv::Mat &imLeft, const cv::Mat &imRight, con
     }
     }
 
-    return mpTracker->GrabImageMonoVI(im,vimu,timestamp);
+    return mpTracker->GrabImageMonoVI(imLeft, vimu, timestamp);
 }
 // -----------------------------------------------------------------------------------------------------
 
